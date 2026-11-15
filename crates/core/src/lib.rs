@@ -25,6 +25,20 @@ impl Market {
             Market::Unknown => "",
         }
     }
+
+    pub fn from_tencent_tag(tag: &str) -> Self {
+        match tag.to_ascii_lowercase().as_str() {
+            "sh" => Market::Sh,
+            "sz" => Market::Sz,
+            "bj" => Market::Bj,
+            _ => Market::Unknown,
+        }
+    }
+
+    /// A-share cash equities / indices on SH/SZ/BJ.
+    pub fn is_a_share(self) -> bool {
+        matches!(self, Market::Sh | Market::Sz | Market::Bj)
+    }
 }
 
 /// A normalized security identifier.
@@ -43,12 +57,10 @@ impl Symbol {
         }
     }
 
-    /// Tencent wire form: `sh600519`, `sz000001`.
     pub fn tencent_wire(&self) -> String {
         format!("{}{}", self.market.as_str(), self.code)
     }
 
-    /// Parse `sh600519`, `SZ000001`, bare `600519` (inferred), or `600519.SH`.
     pub fn parse(input: &str) -> Result<Self> {
         let s = input.trim();
         if s.is_empty() {
@@ -103,6 +115,39 @@ impl Symbol {
     }
 }
 
+/// One smartbox / search suggestion row.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SearchHit {
+    /// Raw market tag from Tencent: `sh` / `sz` / `bj` / `hk` / `us` / …
+    pub market_tag: String,
+    pub code: String,
+    pub name: String,
+    /// Pinyin or ticker hint, e.g. `gzmt`.
+    pub pinyin: String,
+    /// Instrument kind, e.g. `GP-A`, `GP`, `LOF`, `FJ`.
+    pub kind: String,
+}
+
+impl SearchHit {
+    pub fn market(&self) -> Market {
+        Market::from_tencent_tag(&self.market_tag)
+    }
+
+    /// Convert to `Symbol` when market is SH/SZ/BJ.
+    pub fn to_symbol(&self) -> Option<Symbol> {
+        let m = self.market();
+        if m.is_a_share() {
+            Some(Symbol::new(m, self.code.clone()))
+        } else {
+            None
+        }
+    }
+
+    pub fn is_a_share(&self) -> bool {
+        self.market().is_a_share()
+    }
+}
+
 /// One level of the order book (price + volume in hands).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DepthLevel {
@@ -122,33 +167,25 @@ pub struct Quote {
     pub low: f64,
     pub change: f64,
     pub change_pct: f64,
-    /// Volume in **hands** for most boards (Tencent field 6 / 36).
     pub volume: f64,
-    /// Turnover in **万元** when from Tencent field 37.
     pub amount: f64,
     pub turnover_rate: Option<f64>,
     pub pe: Option<f64>,
     pub pb: Option<f64>,
-    /// Amplitude % (Tencent field 43).
     pub amplitude: Option<f64>,
-    /// 流通市值 亿元 (field 44).
     pub float_mv: Option<f64>,
-    /// 总市值 亿元 (field 45).
     pub total_mv: Option<f64>,
     pub limit_up: Option<f64>,
     pub limit_down: Option<f64>,
     pub volume_ratio: Option<f64>,
-    /// Tencent field 30, often `YYYYMMDDHHMMSS`.
     pub update_time: Option<String>,
     pub bids: Vec<DepthLevel>,
     pub asks: Vec<DepthLevel>,
 }
 
-/// One OHLCV bar (date/time encoded in `ts` as unix seconds when known, else 0).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Bar {
     pub ts: i64,
-    /// Calendar date `YYYY-MM-DD` when from daily K; empty for pure minute aggregates.
     pub date: String,
     pub open: f64,
     pub high: f64,
@@ -157,11 +194,8 @@ pub struct Bar {
     pub volume: f64,
 }
 
-/// One intraday minute point from Tencent minute API.
-/// Volume/amount are **cumulative** from open unless noted otherwise.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinutePoint {
-    /// `HHMM` e.g. `0930`, `1300`.
     pub time: String,
     pub price: f64,
     pub volume_cum: f64,
@@ -171,7 +205,6 @@ pub struct MinutePoint {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinuteSeries {
     pub symbol: Symbol,
-    /// Trade date `YYYYMMDD` when provided by API.
     pub date: Option<String>,
     pub points: Vec<MinutePoint>,
 }
@@ -197,11 +230,8 @@ impl KlinePeriod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Adjust {
-    /// 前复权
     Qfq,
-    /// 后复权
     Hfq,
-    /// 不复权
     None,
 }
 
@@ -242,5 +272,18 @@ mod tests {
         let c = Symbol::parse("600519.SH").unwrap();
         assert_eq!(c.market, Market::Sh);
         assert_eq!(c.code, "600519");
+    }
+
+    #[test]
+    fn search_hit_to_symbol_a_share() {
+        let h = SearchHit {
+            market_tag: "sh".into(),
+            code: "600519".into(),
+            name: "贵州茅台".into(),
+            pinyin: "gzmt".into(),
+            kind: "GP-A".into(),
+        };
+        assert!(h.is_a_share());
+        assert_eq!(h.to_symbol().unwrap().tencent_wire(), "sh600519");
     }
 }
