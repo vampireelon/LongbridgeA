@@ -4,7 +4,7 @@
 >
 > **明确范围调整**：搁置所有交易 / 下单 / 模拟盘功能，仅聚焦选股、行情展示、技术分析、基本面辅助与智能筛选。
 >
-> **当前阶段**：仅规划与文档，暂不编码。本仓库用于跟踪文件更新与进度。
+> **当前阶段**：Phase 0 文档与 workspace 骨架已就绪；业务编码从 Phase 1 开始。
 
 ---
 
@@ -44,17 +44,18 @@
 - [gpui-kit 文档](https://gpui-kit.com)
 - 腾讯行情接口调研：[docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
 - UI 设计文档：[docs/DESIGN.md](./docs/DESIGN.md)
+- 项目结构：[docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
 
 ---
 
 ## 3. 功能模块拆分（按优先级）
 
-### Phase 0：基础设施（当前）
+### Phase 0：基础设施 ✅
 - [x] 创建 GitHub 仓库 `LongbridgeA`
 - [x] 完善 README、LICENSE、.gitignore
-- [ ] 定义项目结构（Cargo Workspace）
+- [x] 定义项目结构（Cargo Workspace）→ [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
 - [x] 调研并文档化腾讯行情接口字段与限流策略 → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
-- [x] 确定主题系统与设计 tokens（对标 Longbridge Pro 深色主题）→ [docs/DESIGN.md](./docs/DESIGN.md)
+- [x] 确定主题系统与设计 tokens → [docs/DESIGN.md](./docs/DESIGN.md)
 
 ### Phase 1：数据层（核心）
 - [ ] 腾讯行情客户端 crate（`tencent-quote`）
@@ -63,7 +64,7 @@
   - K线（日/周/月/分钟）
   - 股票搜索
   - 指数与板块
-- [ ] 数据模型定义（Quote、Kline、Tick 等）
+- [ ] 数据模型定义（Quote、Kline、Tick 等）— `core` 已有初版占位
 - [ ] 缓存与订阅机制（内存 + 可选本地 SQLite）
 - [ ] 错误处理与重试策略
 
@@ -108,35 +109,20 @@
 
 ## 4. 建议项目结构（初期）
 
+见 [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)。当前仓库已落地：
+
 ```
-LongbridgeA/
-├── Cargo.toml                 # Workspace root
-├── README.md
-├── WORK_PLAN.md               # 本文件
-├── LICENSE
-├── crates/
-│   ├── app/                   # 主应用入口（Desktop + WASM）
-│   ├── tencent-quote/         # 腾讯行情客户端
-│   ├── core/                  # 共享数据模型、业务逻辑（选股规则等）
-│   ├── ui/                    # 自定义组件与页面
-│   └── chart/                 # 图表引擎
-├── assets/                    # 图标、字体、主题资源
-└── docs/
-    ├── tencent-quote-api.md   # 已完成
-    └── DESIGN.md              # 已完成
+crates/core, tencent-quote, chart, ui, app
 ```
 
 ---
 
-## 5. 近期下一步行动（本周）
+## 5. 近期下一步行动
 
-1. **完善仓库基础文件** ✅
-2. **接口调研文档** ✅ → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
-3. **设计文档** ✅ → [docs/DESIGN.md](./docs/DESIGN.md)
-4. **定义 Cargo Workspace 结构**（文档级即可）
-5. **技术验证（仍不写业务代码）**
-   - 确认 gpui-kit 最新版本与 WASM 支持情况
-   - 本地跑通 gpui-kit 官方示例
+1. Phase 0 ✅
+2. **Phase 1**：实现 `tencent-quote` 快照解析 + `core` 模型补全 + 单测
+3. 本地 `cargo check` / `cargo test` 验证 workspace
+4. 再进入 Phase 2（gpui-kit 壳层）
 
 ---
 
@@ -158,5 +144,5 @@ LongbridgeA/
 
 ---
 
-**最后更新**：2026-11-15（设计文档 DESIGN.md 已完成）  
+**最后更新**：2026-11-15（Phase 0 完成：Workspace 骨架已落地）  
 **仓库地址**：https://github.com/vampireelon/LongbridgeA
