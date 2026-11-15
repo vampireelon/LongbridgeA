@@ -23,8 +23,8 @@
 | 简要快照（列表用） | `qt.gtimg.cn/q=s_` | P0 |
 | 当日分时 | `web.ifzq.gtimg.cn/.../minute/query` | P0 |
 | 日/周/月 K 线 | `web.ifzq.gtimg.cn/.../fqkline/get` | P0 |
-| 分钟 K 线 | `ifzq.gtimg.cn/.../kline/mkline` | P1 |
-| 股票搜索 | `smartbox.gtimg.cn` | P1 |
+| 分钟 K 线 | `ifzq.gtimg.cn/.../kline/mkline` | P0 |
+| 股票搜索 | `smartbox.gtimg.cn` | P0 |
 | 资金流向 | `qt.gtimg.cn/q=ff_` | P2 |
 
 **重要提醒**：接口为非官方公开端点，字段靠社区逆向，存在变更与限流风险。实现时必须做抽象层，方便后续切换数据源。
@@ -85,7 +85,7 @@ v_sh600519="51~贵州茅台~600519~1460.00~...~";
 | 8 | 内盘 | 主动卖出量 | 手 |
 | 9–18 | 买一～买五 | 价 + 量交替 | 价(元) / 量(手) |
 | 19–28 | 卖一～卖五 | 价 + 量交替 | 价(元) / 量(手) |
-| 29 | 最近逐笔 | 时间/价/量/方向... | 盘中才有，用 `\\|` 分隔多笔 |
+| 29 | 最近逐笔 | 时间/价/量/方向... | 盘中才有 |
 | 30 | 更新时间 | | `YYYYMMDDHHMMSS` |
 | 31 | 涨跌额 | 现价 - 昨收 | 元 |
 | 32 | 涨跌幅 | | **百分比数值**，如 `1.23` 表示 1.23% |
@@ -139,12 +139,6 @@ GET https://qt.gtimg.cn/q=s_{code}
 GET https://qt.gtimg.cn/q=ff_{code}
 ```
 
-示例字段（社区逆向）：
-
-- 主力流入 / 流出 / 净流入
-- 散户流入 / 流出 / 净流入
-- 名称、日期等
-
 适合选股器「资金面」条件，优先级 P2。
 
 ---
@@ -157,36 +151,7 @@ GET https://web.ifzq.gtimg.cn/appstock/app/minute/query?code={code}
 
 示例：`code=sh600519`
 
-**返回**：标准 JSON
-
-```json
-{
-  "code": 0,
-  "msg": "",
-  "data": {
-    "sh600519": {
-      "data": {
-        "data": [
-          "0930 2070.00 2513",
-          "0931 2052.05 3303",
-          ...
-        ],
-        "date": "20261115"
-      }
-    }
-  }
-}
-```
-
-单条格式常见为：
-
-```
-时分 价格 累计成交量 [累计成交额]
-```
-
-- 时间：`0930` ~ `1500`（含午休后 `1300`）
-- 成交量/额多为**累计值**，不是单分钟增量
-- 适合绘制当日分时图与均价线
+**返回**：标准 JSON；单条常见为 `时分 价格 累计成交量 [累计成交额]`。
 
 ---
 
@@ -198,38 +163,51 @@ GET https://web.ifzq.gtimg.cn/appstock/app/minute/query?code={code}
 GET https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={code},{period},{start},{end},{count}[,{adjust}]
 ```
 
-参数说明：
-
 | 参数 | 说明 |
 |------|------|
 | code | `sh600519` |
 | period | `day` / `week` / `month` |
 | start / end | `YYYY-MM-DD`，可空 |
 | count | 条数，单次通常 ≤ 640 |
-| adjust | `qfq`（前复权，推荐） / `hfq`（后复权） / 空（不复权） |
+| adjust | `qfq`（前复权） / `hfq` / 空（不复权） |
 
-**备用 Host**（限流时轮换，社区实践）：
+行布局：`[date, open, close, high, low, volume]`。
 
-- `https://web.ifzq.gtimg.cn`
-- `https://ifzq.gtimg.cn`
-- `https://proxy.finance.qq.com/ifzqgtimg`（部分实现使用）
+### 5.2 分钟 K 线（mkline）
 
-单入口连续请求约数百次后可能返回空，建议做 Host 冷却与轮换。
-
-### 5.2 分钟 K 线
+**推荐 Host**（实测 `web.ifzq` 可能 301）：
 
 ```
-GET https://ifzq.gtimg.cn/appstock/app/kline/mkline?param={code},m{period},,{count}
+GET https://ifzq.gtimg.cn/appstock/app/kline/mkline?param={code},{interval},,{count}
 ```
 
-- `m1` / `m5` / `m15` / `m30` / `m60`
-- 主要支持 A 股，数量有限（常见 ≤ 320）
-- 一般为不复权
+- `interval`：`m1` / `m5` / `m15` / `m30` / `m60`
+- 主要支持 A 股；一般为**不复权**
+- 数量常见 ≤ 320
+
+响应片段示例：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "sh600519": {
+      "m5": [
+        ["202611131325", "1428.17", "1424.89", "1429.00", "1423.46", "520.00", {}, "0.42"]
+      ]
+    }
+  }
+}
+```
+
+行布局：`[YYYYMMDDHHMM, open, close, high, low, volume, …]`（OHLC 顺序与日 K 一致）。
+
+本仓库：`MinuteInterval` + `TencentQuoteClient::fetch_mkline`，默认 `mkline_base = https://ifzq.gtimg.cn`。
 
 ### 5.3 数据注意点
 
 - 科创板成交量单位可能是「股」，其余多为「手」
-- 北交所支持不完整，部分接口仅返回最新一根或空
+- 北交所支持不完整
 - 翻页：日线可用 start/end 分段拉取后拼接
 
 ---
@@ -240,130 +218,50 @@ GET https://ifzq.gtimg.cn/appstock/app/kline/mkline?param={code},m{period},,{cou
 GET https://smartbox.gtimg.cn/s3/?v=2&t=all&c=1&q={keyword}
 ```
 
-- `keyword`：代码、中文名或拼音（如 `600519` / `茅台` / `gzmt` / `pingan`）
-- 响应编码：**GBK**
-- 变量名：`v_hint="..."`（可能另有 `v_cate_hint` 分类提示，可忽略）
-
-**单条格式**（`^` 分隔多条）：
-
-```
-{market}~{code}~{name}~{pinyin}~{kind}
-```
-
-示例：
-
-```
-v_hint="sh~600519~贵州茅台~gzmt~GP-A^sz~000001~平安银行~payh~GP-A^hk~02318~中国平安~zgpa~GP";
-```
-
-| 字段 | 说明 |
-|------|------|
-| market | `sh` / `sz` / `bj` / `hk` / `us` / `jj` … |
-| code | 裸代码 |
-| name | 中文名 |
-| pinyin | 拼音或英文 ticker |
-| kind | `GP-A` / `GP` / `ZS` / `LOF` / `FJ` 等 |
-
-本仓库映射为 `SearchHit`，`fetch_search` 返回全市场候选；UI 可用 `SearchHit::is_a_share()` 过滤 A 股。
+- 响应 GBK；`v_hint="market~code~name~pinyin~kind^..."`
+- 映射为 `SearchHit`，可用 `is_a_share()` 过滤 A 股
 
 ---
 
 ## 7. 请求建议与最佳实践
 
-### 7.1 请求头
-
-建议携带：
-
-```http
-User-Agent: Mozilla/5.0 ...
-Referer: https://gu.qq.com/
-```
-
-部分环境不带 Referer 也能通，但带上更稳妥。
-
-### 7.2 编码
-
-```rust
-// 伪代码示意
-let bytes = response.bytes().await?;
-let text = encoding_rs::GBK.decode(&bytes).0;
-```
-
-### 7.3 批量与频率
-
-- 实时快照支持逗号批量，单次不宜过大（建议 ≤ 50～100 只）
-- 自选股轮询建议 3～5 秒一次
-- K 线接口有限流，做好缓存与 Host 轮换
-- 全市场扫描不要用完整快照硬拉，应结合列表接口 + 简要字段
-
-### 7.4 错误与空值处理
-
-- 字段可能为空字符串 → 解析前判断
-- 停牌、退市、非交易时段：价格/量可能为 0 或旧值
-- 用 `fields[30]` 时间戳辅助判断数据是否当日有效
-
-### 7.5 抽象层建议（对本项目）
-
-在 `tencent-quote` crate 中建议：
-
-```text
-QuoteClient trait
-  ├── fetch_quotes(codes) -> Vec<Quote>
-  ├── fetch_minute(code) -> MinuteData
-  ├── fetch_kline(code, period, ...) -> Vec<Bar>
-  └── search(keyword) -> Vec<SearchItem>
-```
-
-底层实现可先写腾讯，后续无缝加新浪 / 东财兜底。
+- Header：`User-Agent` + `Referer: https://gu.qq.com/`
+- 快照批量建议 ≤ 50～100；自选轮询 3～5 秒
+- K 线限流：Host 轮换 + 缓存
+- 字段空串先判空再 parse
 
 ---
 
 ## 8. 对本项目的数据映射建议
 
-| 业务模块 | 使用接口 | 关键字段 |
-|----------|----------|----------|
-| 自选股列表 | `s_` 简要 或完整快照 | 现价、涨跌幅、成交额 |
-| 个股详情头 | 完整快照 | 现价、涨跌、五档、换手、市值、PE/PB |
-| 分时图 | minute/query | 时间序列价格 + 累计量 |
-| K 线图 | fqkline + mkline | OHLCV |
-| 选股器技术条件 | 快照 + K 线计算 | 涨跌幅、量比、均线、振幅 |
-| 选股器资金条件 | ff_ 资金流 | 主力净流入等 |
-| 搜索框 | smartbox | 代码 + 名称 |
+| 业务模块 | 使用接口 |
+|----------|----------|
+| 自选股列表 | `s_` 或完整快照 |
+| 个股详情头 | 完整快照 |
+| 分时图 | minute/query |
+| K 线图 | fqkline + mkline |
+| 搜索框 | smartbox |
 
 ---
 
 ## 9. 已知限制与风险
 
-| 风险 | 说明 | 应对 |
-|------|------|------|
-| 非官方 | 字段可能变更 | 版本化字段映射 + 测试用例 |
-| 限流 | K 线单入口约数百次后空 | Host 轮换 + 缓存 |
-| 单位不一致 | 手 / 股 / 万 / 亿 | 文档与代码注释明确 |
-| 北交所弱支持 | 部分接口不全 | 明确标注或降级 |
-| 编码 | GBK | 强制 GBK 解码 |
-| 合规 | 仅个人/研究用途更稳妥 | 产品定位为分析工具 |
+非官方、限流、单位不一致、北交所弱支持、GBK 编码。产品定位为分析工具。
 
 ---
 
 ## 10. 参考实现与来源
 
-社区常用实现（供对照，非依赖）：
-
-- Python：`pywestockdata`、各类开源行情脚本
-- JS/TS：`@dshtrading/connector-tencent`、`stock-api`（zhangxiangliang）
-- 字段校准来源：多篇 2025–2026 实测博客与 Skill 文档
-
-**官方文档**：无。所有字段均为社区逆向结果。
+社区逆向（stock-api、connector-tencent 等）。**无官方文档**。
 
 ---
 
 ## 11. 下一步（本仓库）
 
-- [x] 在 `crates/tencent-quote` 落地客户端骨架（快照 / 分时 / K 线 / 搜索）
-- [x] 编写字段解析单元测试（用真实响应样例）
-- [x] 确定 Quote / Bar / MinutePoint / SearchHit 内部模型
-- [ ] 设计缓存与订阅策略（内存优先）
-- [ ] 分钟 K（mkline）
+- [x] 客户端骨架：快照 / 分时 / 日K / 分钟K / 搜索
+- [x] 字段解析单元测试
+- [x] Quote / Bar / MinutePoint / SearchHit / MinuteInterval
+- [ ] 缓存与订阅策略（内存优先）
 
 ---
 
