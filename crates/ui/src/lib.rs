@@ -1,12 +1,13 @@
 //! LongbridgeA UI layer.
 //!
-//! Phase 2 skeleton: design tokens, navigation shell state, page models and
-//! pure widgets. Optional `gpui` feature will host gpui-kit views later.
+//! Page models + presentation components. Sessions live in `longbridgea-app`
+//! and write into page state; components **bind** by reading that state.
 //!
 //! See `docs/DESIGN.md` and `docs/UI_SKELETON.md`.
 
 #![forbid(unsafe_code)]
 
+pub mod components;
 pub mod nav;
 pub mod pages;
 pub mod shell;
@@ -20,7 +21,7 @@ pub use theme::{ChangeColorScheme, ColorTheme, Spacing, ThemeMode};
 /// Human-readable skeleton banner for CLI smoke tests.
 pub fn skeleton_banner() -> String {
     format!(
-        "LongbridgeA UI skeleton | routes={} | theme=dark cn-red-up",
+        "LongbridgeA UI | routes={} | components=watchlist/quote/depth/chart",
         Route::ALL.len()
     )
 }
