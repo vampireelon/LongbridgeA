@@ -1,0 +1,18 @@
+[package]
+name = "longbridgea-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "LongbridgeA desktop application entrypoint"
+
+[[bin]]
+name = "longbridgea"
+path = "src/main.rs"
+
+[dependencies]
+longbridgea-core = { workspace = true }
+longbridgea-ui = { workspace = true }
+longbridgea-chart = { workspace = true }
+tencent-quote = { workspace = true }
+anyhow = { workspace = true }
