@@ -39,6 +39,7 @@ mod tests {
             .enumerate()
             .map(|(i, c)| Bar {
                 ts: i as i64,
+                date: String::new(),
                 open: c,
                 high: c,
                 low: c,
