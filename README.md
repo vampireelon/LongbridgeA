@@ -40,4 +40,4 @@ See [WORK_PLAN.md](./WORK_PLAN.md) for the full phased roadmap.
 
 ## License
 
-To be determined (likely MIT or Apache-2.0).
+[MIT](./LICENSE)
