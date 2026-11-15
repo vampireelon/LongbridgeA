@@ -1,0 +1,18 @@
+[package]
+name = "tencent-quote"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Tencent Finance public quote HTTP client for LongbridgeA"
+
+[dependencies]
+longbridgea-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+encoding_rs = { workspace = true }
+chrono = { workspace = true }
