@@ -16,3 +16,4 @@ longbridgea-ui = { workspace = true }
 longbridgea-chart = { workspace = true }
 tencent-quote = { workspace = true }
 anyhow = { workspace = true }
+tokio = { workspace = true }
