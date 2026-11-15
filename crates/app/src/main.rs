@@ -1,9 +1,9 @@
 //! LongbridgeA application entry.
 //!
 //! GUI bootstrap (gpui-kit) lands in Phase 2.
-//! This binary can optionally smoke-test the quote client.
+//! Optional live smoke: `LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app`
 
-use longbridgea_core::Symbol;
+use longbridgea_core::{Adjust, KlinePeriod, Symbol};
 use tencent_quote::{ClientConfig, TencentQuoteClient};
 
 #[tokio::main]
@@ -13,16 +13,17 @@ async fn main() -> anyhow::Result<()> {
     println!("UI: {}", longbridgea_ui::pages::placeholder_watchlist());
 
     let client = TencentQuoteClient::new(ClientConfig::default())?;
-    println!("Quote client base: {}", client.config().quote_base);
+    println!("Quote base: {}", client.config().quote_base);
+    println!("Ifzq base:  {}", client.config().ifzq_base);
 
-    // Optional live smoke test: set LONGBRIDGEA_LIVE=1 to hit the network.
     if std::env::var("LONGBRIDGEA_LIVE").is_ok() {
         let sym = Symbol::parse("sh600519")?;
-        match client.fetch_quotes(&[sym]).await {
+
+        match client.fetch_quotes(&[sym.clone()]).await {
             Ok(quotes) => {
                 for q in quotes {
                     println!(
-                        "LIVE {} {} price={} change_pct={}%",
+                        "QUOTE {} {} price={} pct={}%",
                         q.symbol.tencent_wire(),
                         q.name,
                         q.price,
@@ -30,10 +31,36 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
             }
-            Err(e) => eprintln!("live quote failed: {e}"),
+            Err(e) => eprintln!("quote failed: {e}"),
+        }
+
+        match client.fetch_minute(&sym).await {
+            Ok(m) => println!(
+                "MINUTE points={} date={:?} last={:?}",
+                m.points.len(),
+                m.date,
+                m.points.last().map(|p| (&p.time, p.price))
+            ),
+            Err(e) => eprintln!("minute failed: {e}"),
+        }
+
+        match client
+            .fetch_kline(&sym, KlinePeriod::Day, Adjust::Qfq, 5)
+            .await
+        {
+            Ok(bars) => {
+                println!("KLINE day bars={}", bars.len());
+                for b in bars.iter().rev().take(3) {
+                    println!(
+                        "  {} O={} C={} H={} L={} V={}",
+                        b.date, b.open, b.close, b.high, b.low, b.volume
+                    );
+                }
+            }
+            Err(e) => eprintln!("kline failed: {e}"),
         }
     } else {
-        println!("Tip: LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app  # live smoke test");
+        println!("Tip: LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app");
     }
 
     Ok(())
