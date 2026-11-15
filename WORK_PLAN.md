@@ -4,7 +4,7 @@
 >
 > **明确范围调整**：搁置所有交易 / 下单 / 模拟盘功能，仅聚焦选股、行情展示、技术分析、基本面辅助与智能筛选。
 >
-> **当前阶段**：Phase 0 文档与 workspace 骨架已就绪；业务编码从 Phase 1 开始。
+> **当前阶段**：Phase 1 进行中 — 实时快照解析与 HTTP 客户端已落地。
 
 ---
 
@@ -12,137 +12,65 @@
 
 ### 1.1 核心目标
 - 打造高性能、跨平台（macOS / Windows / Linux）的 A 股专业 **选股与分析** 桌面端。
-- 视觉与交互对标 Longbridge Pro 的行情与分析体验：多屏布局、自定义 Workspace、专业图表、条件选股、AI 辅助分析等。
-- 数据层优先使用腾讯公开行情接口（qt.gtimg.cn 等），后续可扩展其他源。
-- 支持 WASM 目标（浏览器端原型）与原生 Desktop 双端。
+- 视觉与交互对标 Longbridge Pro 的行情与分析体验。
+- 数据层优先使用腾讯公开行情接口，后续可扩展其他源。
+- 支持 WASM 与原生 Desktop。
 
 ### 1.2 非目标（明确排除）
-- **不实现任何交易、下单、模拟盘、持仓、委托、成交功能**（包括图表内交易、快捷键交易等）。
+- **不实现任何交易、下单、模拟盘、持仓、委托、成交功能**。
 - 不覆盖港股、美股完整功能（可预留扩展接口）。
-- 不实现完整量化回测引擎（可后期作为分析扩展加入）。
+- 不实现完整量化回测引擎。
 - 不接入任何券商交易通道。
 
 ---
 
 ## 2. 技术栈确认
 
-| 层级 | 技术 | 说明 |
-|------|------|------|
-| 语言 | Rust | 主语言 |
-| GUI 框架 | gpui-kit (基于 GPUI) | Longbridge 官方开源，生产级组件库，支持 Desktop + WASM |
-| 渲染/窗口 | GPUI + gpui-platform | 高性能 GPU 加速 |
-| 数据获取 | reqwest / tokio + 腾讯行情 HTTP 接口 | 实时报价、K线、分时等 |
-| 状态管理 | gpui 内置 Entity + 可能结合 Redux-like 或自定义 Store | |
-| 图表 | 自研或集成 plotters / 自定义 Canvas 绘制 | K线、分时、技术指标 |
-| 序列化 | serde + serde_json | |
-| 异步运行时 | tokio | |
-| 构建 | cargo + wasm-bindgen / trunk（WASM） | |
-| 包管理 | Cargo Workspace | 多 crate 结构 |
-
-**参考资源**：
-- [gpui-kit GitHub](https://github.com/longbridge/gpui-kit)
-- [gpui-kit 文档](https://gpui-kit.com)
-- 腾讯行情接口调研：[docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
-- UI 设计文档：[docs/DESIGN.md](./docs/DESIGN.md)
-- 项目结构：[docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
+见 README / PROJECT_STRUCTURE。参考文档：
+- [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
+- [docs/DESIGN.md](./docs/DESIGN.md)
+- [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
 
 ---
 
 ## 3. 功能模块拆分（按优先级）
 
 ### Phase 0：基础设施 ✅
-- [x] 创建 GitHub 仓库 `LongbridgeA`
-- [x] 完善 README、LICENSE、.gitignore
-- [x] 定义项目结构（Cargo Workspace）→ [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
-- [x] 调研并文档化腾讯行情接口字段与限流策略 → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
-- [x] 确定主题系统与设计 tokens → [docs/DESIGN.md](./docs/DESIGN.md)
 
 ### Phase 1：数据层（核心）
-- [ ] 腾讯行情客户端 crate（`tencent-quote`）
-  - 实时报价（单只 / 批量）
-  - 分时数据
-  - K线（日/周/月/分钟）
-  - 股票搜索
-  - 指数与板块
-- [ ] 数据模型定义（Quote、Kline、Tick 等）— `core` 已有初版占位
-- [ ] 缓存与订阅机制（内存 + 可选本地 SQLite）
-- [ ] 错误处理与重试策略
+- [x] 腾讯行情客户端 — **实时快照**（`fetch_quotes` + GBK + `~` 字段解析）
+- [ ] 分时数据
+- [ ] K线（日/周/月/分钟）
+- [ ] 股票搜索
+- [ ] 指数与板块（可复用快照批量）
+- [x] 数据模型初版（`Symbol` / `Quote` / `Bar` / 五档）
+- [ ] 缓存与订阅机制
+- [x] 基础错误类型（`QuoteError`）
 
-### Phase 2：基础 UI 框架
-- [ ] 使用 gpui-kit 搭建主窗口与 Dock / Panel 布局系统
-- [ ] 侧边栏导航（行情、自选、选股、分析、资讯、设置）
-- [ ] 多窗口 / 多屏支持基础
-- [ ] 主题切换（深色 / 浅色）
-- [ ] 快捷键框架（导航与分析相关）
-
-### Phase 3：核心行情与分析界面
-- [ ] 自选股列表（Watchlist）
-- [ ] 个股详情页（报价、五档、分时、K线、基础财务概览）
-- [ ] 专业 K线图表（支持画线、常用技术指标：MA、MACD、RSI、BOLL 等）
-- [ ] 分时图
-- [ ] 市场概览（指数、涨跌分布、热门板块）
-
-### Phase 4：选股与筛选（核心重点）
-- [ ] 条件选股器（Screener）
-  - 技术面条件（涨跌幅、成交量、均线形态、指标金叉死叉等）
-  - 基础基本面条件（市值、PE/PB、营收等，数据源可扩展）
-  - 预设策略模板 + 自定义条件组合
-  - 结果列表与一键加入自选
-- [ ] 板块 / 概念轮动分析
-- [ ] 资金流向、龙虎榜等扩展数据展示（可结合其他接口）
-
-### Phase 5：高级分析功能
-- [ ] AI 辅助分析入口（预留接口，可对接本地/云端模型）
-  - 个股解读、趋势判断、异动原因等
-- [ ] 自定义 Workspace 布局保存/加载
-- [ ] 资讯与公告模块
-- [ ] 多股对比 / 叠加分析
-
-### Phase 6：跨端与打磨
-- [ ] WASM 版本（浏览器可运行原型）
-- [ ] 打包与自动更新（Desktop）
-- [ ] 性能优化（虚拟列表、图表渲染）
-- [ ] 无障碍与国际化（中英文）
-- [ ] 单元测试 + UI 集成测试
+### Phase 2–6
+见历史计划；UI 仍待 gpui-kit。
 
 ---
 
-## 4. 建议项目结构（初期）
+## 4. 本地命令
 
-见 [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)。当前仓库已落地：
-
-```
-crates/core, tencent-quote, chart, ui, app
+```bash
+cargo test -p longbridgea-core -p tencent-quote -p longbridgea-chart
+cargo run -p longbridgea-app
+LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app   # 真实请求茅台快照
 ```
 
----
-
-## 5. 近期下一步行动
-
-1. Phase 0 ✅
-2. **Phase 1**：实现 `tencent-quote` 快照解析 + `core` 模型补全 + 单测
-3. 本地 `cargo check` / `cargo test` 验证 workspace
-4. 再进入 Phase 2（gpui-kit 壳层）
+工具链：`rust-toolchain.toml` → 1.85.0
 
 ---
 
-## 6. 风险与注意事项
+## 5. 风险
 
-- **数据合规**：腾讯公开接口为非官方，存在变更或限流风险，需做好抽象层，方便切换数据源。详见接口调研文档。
-- **性能**：A股全市场实时订阅与选股扫描对网络与渲染压力较大，需合理设计订阅、缓存与刷新策略。
-- **gpui-kit 成熟度**：虽已被 Longbridge Pro 使用，但仍在快速迭代，需锁定版本并关注 breaking changes。
-- **范围控制**：严格排除交易相关功能，保持产品定位清晰（纯选股/分析工具）。
-
----
-
-## 7. 进度跟踪方式
-
-- 本仓库 Issues 用于任务拆分与讨论
-- Projects（GitHub Projects）用于看板管理
-- 每次重要文档更新直接 push 到 main
-- 代码阶段开始后采用 feature branch + PR 流程
+- 腾讯接口非官方；字段变更需改 `parse.rs`
+- 限流与 GBK 编码
+- 严格排除交易功能
 
 ---
 
-**最后更新**：2026-11-15（Phase 0 完成：Workspace 骨架已落地）  
-**仓库地址**：https://github.com/vampireelon/LongbridgeA
+**最后更新**：2026-11-15（Phase 1：快照客户端）  
+**仓库**：https://github.com/vampireelon/LongbridgeA
