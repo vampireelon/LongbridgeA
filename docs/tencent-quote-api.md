@@ -85,7 +85,7 @@ v_sh600519="51~贵州茅台~600519~1460.00~...~";
 | 8 | 内盘 | 主动卖出量 | 手 |
 | 9–18 | 买一～买五 | 价 + 量交替 | 价(元) / 量(手) |
 | 19–28 | 卖一～卖五 | 价 + 量交替 | 价(元) / 量(手) |
-| 29 | 最近逐笔 | 时间/价/量/方向... | 盘中才有，用 `\|` 分隔多笔 |
+| 29 | 最近逐笔 | 时间/价/量/方向... | 盘中才有，用 `\\|` 分隔多笔 |
 | 30 | 更新时间 | | `YYYYMMDDHHMMSS` |
 | 31 | 涨跌额 | 现价 - 昨收 | 元 |
 | 32 | 涨跌幅 | | **百分比数值**，如 `1.23` 表示 1.23% |
@@ -234,13 +234,37 @@ GET https://ifzq.gtimg.cn/appstock/app/kline/mkline?param={code},m{period},,{cou
 
 ---
 
-## 6. 股票搜索
+## 6. 股票搜索（smartbox）
 
 ```
-GET https://smartbox.gtimg.cn/s3/?t=all&q={keyword}
+GET https://smartbox.gtimg.cn/s3/?v=2&t=all&c=1&q={keyword}
 ```
 
-用于代码 / 名称模糊搜索，返回候选列表，适合搜索框与选股器入口。
+- `keyword`：代码、中文名或拼音（如 `600519` / `茅台` / `gzmt` / `pingan`）
+- 响应编码：**GBK**
+- 变量名：`v_hint="..."`（可能另有 `v_cate_hint` 分类提示，可忽略）
+
+**单条格式**（`^` 分隔多条）：
+
+```
+{market}~{code}~{name}~{pinyin}~{kind}
+```
+
+示例：
+
+```
+v_hint="sh~600519~贵州茅台~gzmt~GP-A^sz~000001~平安银行~payh~GP-A^hk~02318~中国平安~zgpa~GP";
+```
+
+| 字段 | 说明 |
+|------|------|
+| market | `sh` / `sz` / `bj` / `hk` / `us` / `jj` … |
+| code | 裸代码 |
+| name | 中文名 |
+| pinyin | 拼音或英文 ticker |
+| kind | `GP-A` / `GP` / `ZS` / `LOF` / `FJ` 等 |
+
+本仓库映射为 `SearchHit`，`fetch_search` 返回全市场候选；UI 可用 `SearchHit::is_a_share()` 过滤 A 股。
 
 ---
 
@@ -335,10 +359,11 @@ QuoteClient trait
 
 ## 11. 下一步（本仓库）
 
-- [ ] 在 `crates/tencent-quote` 落地客户端骨架
-- [ ] 编写字段解析单元测试（用真实响应样例）
-- [ ] 确定 Quote / Bar / MinutePoint 内部模型
+- [x] 在 `crates/tencent-quote` 落地客户端骨架（快照 / 分时 / K 线 / 搜索）
+- [x] 编写字段解析单元测试（用真实响应样例）
+- [x] 确定 Quote / Bar / MinutePoint / SearchHit 内部模型
 - [ ] 设计缓存与订阅策略（内存优先）
+- [ ] 分钟 K（mkline）
 
 ---
 
