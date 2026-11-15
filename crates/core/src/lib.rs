@@ -16,27 +16,104 @@ pub enum Market {
     Unknown,
 }
 
-/// A normalized security identifier.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Symbol {
-    pub market: Market,
-    /// Bare 6-digit (or index) code without prefix, e.g. `600519`.
-    pub code: String,
-}
-
-impl Symbol {
-    pub fn tencent_wire(&self) -> String {
-        let prefix = match self.market {
+impl Market {
+    pub fn as_str(self) -> &'static str {
+        match self {
             Market::Sh => "sh",
             Market::Sz => "sz",
             Market::Bj => "bj",
             Market::Unknown => "",
-        };
-        format!("{prefix}{}", self.code)
+        }
     }
 }
 
-/// Snapshot quote used across UI and screener (subset; expand in Phase 1).
+/// A normalized security identifier.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Symbol {
+    pub market: Market,
+    /// Bare code without prefix, e.g. `600519` or index `000001`.
+    pub code: String,
+}
+
+impl Symbol {
+    pub fn new(market: Market, code: impl Into<String>) -> Self {
+        Self {
+            market,
+            code: code.into(),
+        }
+    }
+
+    /// Tencent wire form: `sh600519`, `sz000001`.
+    pub fn tencent_wire(&self) -> String {
+        format!("{}{}", self.market.as_str(), self.code)
+    }
+
+    /// Parse `sh600519`, `SZ000001`, bare `600519` (inferred), or `600519.SH`.
+    pub fn parse(input: &str) -> Result<Self> {
+        let s = input.trim();
+        if s.is_empty() {
+            return Err(CoreError::InvalidSymbol(input.to_string()));
+        }
+
+        let lower = s.to_ascii_lowercase();
+
+        // 600519.SH / 000001.SZ
+        if let Some((code, mkt)) = lower.split_once('.') {
+            let market = match mkt {
+                "sh" | "xshg" => Market::Sh,
+                "sz" | "xshe" => Market::Sz,
+                "bj" => Market::Bj,
+                _ => Market::Unknown,
+            };
+            if code.is_empty() || market == Market::Unknown {
+                return Err(CoreError::InvalidSymbol(input.to_string()));
+            }
+            return Ok(Self::new(market, code));
+        }
+
+        // sh600519 / sz000001 / bj830799
+        if lower.len() > 2 {
+            let prefix = &lower[..2];
+            let rest = &lower[2..];
+            if rest.chars().all(|c| c.is_ascii_digit()) {
+                let market = match prefix {
+                    "sh" => Market::Sh,
+                    "sz" => Market::Sz,
+                    "bj" => Market::Bj,
+                    _ => Market::Unknown,
+                };
+                if market != Market::Unknown {
+                    return Ok(Self::new(market, rest));
+                }
+            }
+        }
+
+        // Bare digits: infer market from first digit rules (common A-share heuristic).
+        if lower.chars().all(|c| c.is_ascii_digit()) {
+            let market = match lower.as_bytes().first() {
+                Some(b'5') | Some(b'6') | Some(b'9') => Market::Sh,
+                Some(b'0') | Some(b'1') | Some(b'2') | Some(b'3') => Market::Sz,
+                Some(b'4') | Some(b'8') => Market::Bj,
+                _ => Market::Unknown,
+            };
+            if market == Market::Unknown {
+                return Err(CoreError::InvalidSymbol(input.to_string()));
+            }
+            return Ok(Self::new(market, lower));
+        }
+
+        Err(CoreError::InvalidSymbol(input.to_string()))
+    }
+}
+
+/// One level of the order book (price + volume in hands).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DepthLevel {
+    pub price: f64,
+    pub volume: f64,
+}
+
+/// Snapshot quote used across UI and screener.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Quote {
     pub symbol: Symbol,
@@ -48,13 +125,26 @@ pub struct Quote {
     pub low: f64,
     pub change: f64,
     pub change_pct: f64,
-    /// Volume in hands (typical for main board); document unit at parse site.
+    /// Volume in **hands** for most boards (Tencent field 6 / 36).
     pub volume: f64,
-    /// Turnover in 万元 when sourced from Tencent field 37.
+    /// Turnover in **万元** when from Tencent field 37.
     pub amount: f64,
     pub turnover_rate: Option<f64>,
     pub pe: Option<f64>,
     pub pb: Option<f64>,
+    /// Amplitude % (Tencent field 43).
+    pub amplitude: Option<f64>,
+    /// 流通市值 亿元 (field 44).
+    pub float_mv: Option<f64>,
+    /// 总市值 亿元 (field 45).
+    pub total_mv: Option<f64>,
+    pub limit_up: Option<f64>,
+    pub limit_down: Option<f64>,
+    pub volume_ratio: Option<f64>,
+    /// Tencent field 30, often `YYYYMMDDHHMMSS`.
+    pub update_time: Option<String>,
+    pub bids: Vec<DepthLevel>,
+    pub asks: Vec<DepthLevel>,
 }
 
 /// One OHLCV bar.
@@ -68,7 +158,6 @@ pub struct Bar {
     pub volume: f64,
 }
 
-/// Placeholder error type for domain operations.
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
     #[error("invalid symbol: {0}")]
@@ -78,3 +167,23 @@ pub enum CoreError {
 }
 
 pub type Result<T> = std::result::Result<T, CoreError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_prefixed_and_bare() {
+        let a = Symbol::parse("sh600519").unwrap();
+        assert_eq!(a.market, Market::Sh);
+        assert_eq!(a.code, "600519");
+        assert_eq!(a.tencent_wire(), "sh600519");
+
+        let b = Symbol::parse("000001").unwrap();
+        assert_eq!(b.market, Market::Sz);
+
+        let c = Symbol::parse("600519.SH").unwrap();
+        assert_eq!(c.market, Market::Sh);
+        assert_eq!(c.code, "600519");
+    }
+}
