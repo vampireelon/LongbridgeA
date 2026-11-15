@@ -43,6 +43,7 @@
 - [gpui-kit GitHub](https://github.com/longbridge/gpui-kit)
 - [gpui-kit 文档](https://gpui-kit.com)
 - 腾讯行情接口调研：[docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
+- UI 设计文档：[docs/DESIGN.md](./docs/DESIGN.md)
 
 ---
 
@@ -53,7 +54,7 @@
 - [x] 完善 README、LICENSE、.gitignore
 - [ ] 定义项目结构（Cargo Workspace）
 - [x] 调研并文档化腾讯行情接口字段与限流策略 → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
-- [ ] 确定主题系统与设计 tokens（对标 Longbridge Pro 深色主题）
+- [x] 确定主题系统与设计 tokens（对标 Longbridge Pro 深色主题）→ [docs/DESIGN.md](./docs/DESIGN.md)
 
 ### Phase 1：数据层（核心）
 - [ ] 腾讯行情客户端 crate（`tencent-quote`）
@@ -120,8 +121,9 @@ LongbridgeA/
 │   ├── ui/                    # 自定义组件与页面
 │   └── chart/                 # 图表引擎
 ├── assets/                    # 图标、字体、主题资源
-└── docs/                      # 接口文档、设计文档
-    └── tencent-quote-api.md   # 已完成
+└── docs/
+    ├── tencent-quote-api.md   # 已完成
+    └── DESIGN.md              # 已完成
 ```
 
 ---
@@ -130,10 +132,9 @@ LongbridgeA/
 
 1. **完善仓库基础文件** ✅
 2. **接口调研文档** ✅ → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
-3. **设计文档**
-   - 核心页面线框图描述（自选、个股分析、选股器）
-   - 主题色板与组件规范
-4. **技术验证（仍不写业务代码）**
+3. **设计文档** ✅ → [docs/DESIGN.md](./docs/DESIGN.md)
+4. **定义 Cargo Workspace 结构**（文档级即可）
+5. **技术验证（仍不写业务代码）**
    - 确认 gpui-kit 最新版本与 WASM 支持情况
    - 本地跑通 gpui-kit 官方示例
 
@@ -157,5 +158,5 @@ LongbridgeA/
 
 ---
 
-**最后更新**：2026-11-15（腾讯行情接口调研文档已完成）  
+**最后更新**：2026-11-15（设计文档 DESIGN.md 已完成）  
 **仓库地址**：https://github.com/vampireelon/LongbridgeA
