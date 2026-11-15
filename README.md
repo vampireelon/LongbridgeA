@@ -10,7 +10,9 @@ Built with **Rust + gpui-kit + WASM/Desktop**, using **Tencent market data APIs*
 
 ## Repository
 
-- **Work Plan (详细工作计划)**: [WORK_PLAN.md](./WORK_PLAN.md)
+- **Work Plan**: [WORK_PLAN.md](./WORK_PLAN.md)
+- **Tencent Quote API research**: [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
+- **UI / UX Design**: [docs/DESIGN.md](./docs/DESIGN.md)
 - GitHub: https://github.com/vampireelon/LongbridgeA
 
 ## Tech Stack (planned)
@@ -31,10 +33,7 @@ Built with **Rust + gpui-kit + WASM/Desktop**, using **Tencent market data APIs*
 
 ## Current Focus
 
-1. Finalize project structure & documentation
-2. Document Tencent quote API fields and usage patterns
-3. Design system & layout prototypes (docs only)
-4. Then start coding Phase 1 (data layer)
+Phase 0 documentation is largely done (API research + design system). Next: define Cargo Workspace structure, then Phase 1 data layer.
 
 See [WORK_PLAN.md](./WORK_PLAN.md) for the full phased roadmap.
 
