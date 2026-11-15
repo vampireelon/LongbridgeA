@@ -1,39 +1,27 @@
-# UI 骨架与组件绑定
-
-> 更新：2026-11-15
+# UI 骨架与 gpui 绑定
 
 ## 分层
 
-| 层 | Crate | 职责 |
-|----|-------|------|
-| Session | `app` | `WatchlistSession` / `StockDetailSession` 拉数写 page |
-| Page model | `ui::pages` | 状态与业务字段 |
-| Component | `ui::components` | `bind(page) → View`，可 `render_text` |
-| AppState | `app::state` | shell + sessions + `bind_*` 聚合 |
-| gpui view | 待做 | 把 View 画成 Element |
+| 层 | 说明 |
+|----|------|
+| Session | app 内拉数写 `pages::*` |
+| Component | `bind` → `*View` / `render_text` |
+| ShellSnapshot | `Arc<Mutex<_>>`，GUI 与后台共享 |
+| RootShell | gpui `Render`，画侧栏 + 主区文本 |
 
-`ui` **不**依赖 `tencent-quote`。
+## Feature
 
-## 组件
-
-| Component | 数据源 |
-|-----------|--------|
-| `WatchlistTableView` | `WatchlistPage` |
-| `QuoteHeaderView` | `StockDetailPage.quote` |
-| `DepthBookView` | 五档 |
-| `ChartPanelView` | 分时 / K 线序列 |
-
-## AppState API
-
-```rust
-app.watchlist.set_symbols(&syms).await?;
-app.watchlist.refresh_once().await;
-let table = app.bind_watchlist_table().await; // WatchlistTableView
-print!("{}", table.render_text());
-
-app.focus_stock(sym, ChartPeriod::Minute).await;
-app.stock.load_all().await?;
-print!("{}", app.render_stock_bound().await);
+```toml
+# app
+gpui = ["longbridgea-ui/gpui", "dep:gpui-kit"]
 ```
 
-同一 `Arc<RwLock<Page>>` 供后续 gpui 订阅。
+```bash
+LONGBRIDGEA_GUI=1 cargo run -p longbridgea-app --features gpui
+```
+
+要求：Rust 版本满足 gpui-kit（官方文档倾向较新稳定版，可能 ≥1.92），并安装对应平台原生依赖。
+
+## 刷新说明
+
+当前实现：后台更新 Snapshot；窗口在布局/系统触发时重绘可读到新文本。后续可在 `RootShell` 上挂 `cx.spawn` 定时 `cx.notify()` 强制刷新。

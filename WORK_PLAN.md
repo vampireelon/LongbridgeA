@@ -1,46 +1,42 @@
 # LongbridgeA 工作计划
 
 > **目标**：A 股选股与分析工具（Rust + gpui-kit + 腾讯行情）。无交易功能。
->
-> **当前阶段**：Session 已绑定到页面组件（`AppState` + `components::*`）。
 
 ---
 
 ## Phase 0–1：数据层 ✅
 
-## Phase 2：UI 壳层
+## Phase 2：UI
 
-- [x] tokens / `AppShell` / 页面 ViewModel
-- [x] `WatchlistSession` / `StockDetailSession`
-- [x] **组件绑定**：`WatchlistTableView` / `QuoteHeaderView` / `DepthBookView` / `ChartPanelView`
-- [x] **`AppState`**：shell + sessions + `bind_*` / `render_*_bound`
-- [ ] gpui-kit 窗口：`Render` 映射上述 View 结构体
-
-## 绑定关系
-
-```text
-Tencent client / QuoteHub
-        │
-   Session (app)
-        │ writes
-        ▼
-  Page model (ui::pages)
-        │ bind()
-        ▼
-  Component view (ui::components)
-        │ render_text()  ── headless
-        │ gpui Element   ── 待做
-```
+- [x] tokens / AppShell / 页面 ViewModel / 组件 bind
+- [x] WatchlistSession / StockDetailSession / AppState
+- [x] **gpui 窗口壳（feature `gpui`）**：`RootShell` + 后台 Session 写 `ShellSnapshot`
+- [ ] 侧栏点击切换 / 真正色板与表格组件（非纯 Label 文本）
+- [ ] 窗口定时 `cx.notify` 刷新（当前依赖重新 render；可再加 timer）
 
 ---
 
-## 本地命令
+## 运行
 
 ```bash
-cargo test -p longbridgea-ui
+# 无窗口
 LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=watchlist cargo run -p longbridgea-app
-LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=stock LONGBRIDGEA_PERIOD=m5 \
-  LONGBRIDGEA_SYMBOL=sh600519 cargo run -p longbridgea-app
+LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=stock LONGBRIDGEA_SYMBOL=sh600519 cargo run -p longbridgea-app
+
+# 桌面窗口（需较新 Rust，见 gpui-kit 文档；本仓库沙箱 1.75 无法编译验证）
+LONGBRIDGEA_GUI=1 cargo run -p longbridgea-app --features gpui
+LONGBRIDGEA_GUI=1 LONGBRIDGEA_MODE=stock LONGBRIDGEA_PERIOD=m5 \
+  LONGBRIDGEA_SYMBOL=sh600519 cargo run -p longbridgea-app --features gpui
+```
+
+数据 → UI：
+
+```text
+Session → Page → Component::bind → render_text
+                         ↓
+              ShellSnapshot (Mutex)
+                         ↓
+              RootShell (gpui Render)
 ```
 
 ---

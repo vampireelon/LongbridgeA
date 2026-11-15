@@ -10,6 +10,10 @@ description = "LongbridgeA desktop application entrypoint"
 name = "longbridgea"
 path = "src/main.rs"
 
+[features]
+default = []
+gpui = ["longbridgea-ui/gpui", "dep:gpui-kit"]
+
 [dependencies]
 longbridgea-core = { workspace = true }
 longbridgea-ui = { workspace = true }
@@ -17,3 +21,4 @@ longbridgea-chart = { workspace = true }
 tencent-quote = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
+gpui-kit = { version = "0.9", optional = true }

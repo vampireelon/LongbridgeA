@@ -1,9 +1,7 @@
 //! LongbridgeA UI layer.
 //!
-//! Page models + presentation components. Sessions live in `longbridgea-app`
-//! and write into page state; components **bind** by reading that state.
-//!
-//! See `docs/DESIGN.md` and `docs/UI_SKELETON.md`.
+//! Page models + presentation components. Optional `gpui` feature adds a
+//! desktop shell view that consumes bound text snapshots from the app.
 
 #![forbid(unsafe_code)]
 
@@ -14,14 +12,26 @@ pub mod shell;
 pub mod theme;
 pub mod widgets;
 
+#[cfg(feature = "gpui")]
+pub mod gpui_shell;
+
 pub use nav::{NavItem, Route};
 pub use shell::{AppShell, ShellLayout, Tab, TabKind};
 pub use theme::{ChangeColorScheme, ColorTheme, Spacing, ThemeMode};
 
-/// Human-readable skeleton banner for CLI smoke tests.
 pub fn skeleton_banner() -> String {
-    format!(
-        "LongbridgeA UI | routes={} | components=watchlist/quote/depth/chart",
-        Route::ALL.len()
-    )
+    #[cfg(feature = "gpui")]
+    {
+        format!(
+            "LongbridgeA UI | routes={} | gpui=on",
+            Route::ALL.len()
+        )
+    }
+    #[cfg(not(feature = "gpui"))]
+    {
+        format!(
+            "LongbridgeA UI | routes={} | gpui=off (cargo run -p longbridgea-app --features gpui)",
+            Route::ALL.len()
+        )
+    }
 }

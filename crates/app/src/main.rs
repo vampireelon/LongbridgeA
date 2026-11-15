@@ -1,16 +1,19 @@
 //! LongbridgeA application entry.
 //!
-//! Sessions write page models; components **bind** from those models via `AppState`.
+//! Headless (default):
+//!   LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=watchlist|stock cargo run -p longbridgea-app
 //!
-//! ```text
-//! LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=watchlist cargo run -p longbridgea-app
-//! LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=stock LONGBRIDGEA_SYMBOL=sh600519 \
-//!   LONGBRIDGEA_PERIOD=minute cargo run -p longbridgea-app
-//! ```
+//! Desktop GUI (needs Rust toolchain compatible with gpui-kit + system deps):
+//!   LONGBRIDGEA_GUI=1 cargo run -p longbridgea-app --features gpui
+//!   LONGBRIDGEA_GUI=1 LONGBRIDGEA_MODE=stock LONGBRIDGEA_SYMBOL=sh600519 \
+//!     cargo run -p longbridgea-app --features gpui
 
 mod state;
 mod stock_session;
 mod watchlist_session;
+
+#[cfg(feature = "gpui")]
+mod gpui_app;
 
 use longbridgea_core::Symbol;
 use longbridgea_ui::pages::stock::ChartPeriod;
@@ -36,8 +39,17 @@ async fn main() -> anyhow::Result<()> {
     println!("Scope: A-share selection & analysis (no trading).");
     println!("{}", longbridgea_ui::skeleton_banner());
 
+    #[cfg(feature = "gpui")]
+    {
+        if std::env::var("LONGBRIDGEA_GUI").is_ok() {
+            // gpui owns the main thread / event loop; this does not return until quit.
+            return gpui_app::run();
+        }
+    }
+
     if std::env::var("LONGBRIDGEA_LIVE").is_err() {
         println!("Tip: LONGBRIDGEA_LIVE=1 LONGBRIDGEA_MODE=watchlist|stock cargo run -p longbridgea-app");
+        println!("GUI:  LONGBRIDGEA_GUI=1 cargo run -p longbridgea-app --features gpui");
         return Ok(());
     }
 
@@ -76,7 +88,6 @@ async fn run_watchlist_bound(app: &mut AppState, secs: u64) -> anyhow::Result<()
     app.watchlist.set_symbols(&symbols).await?;
     println!("  shell {}", app.shell.debug_layout());
 
-    // First paint through component bind
     app.watchlist.refresh_once().await;
     print!("{}", app.render_watchlist_bound().await);
 

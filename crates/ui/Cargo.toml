@@ -8,13 +8,11 @@ description = "UI shell, theme tokens, pages and widgets for LongbridgeA"
 
 [features]
 default = []
-# Optional desktop GUI. Requires platform native deps; see docs/UI_SKELETON.md.
+# Desktop GUI via gpui-kit (needs recent Rust + native deps).
 gpui = ["dep:gpui-kit"]
 
 [dependencies]
 longbridgea-core = { workspace = true }
 longbridgea-chart = { workspace = true }
 serde = { workspace = true }
-
-# Optional — enable with `--features gpui` on longbridgea-ui / longbridgea-app
 gpui-kit = { version = "0.9", optional = true }
