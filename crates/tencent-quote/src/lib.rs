@@ -7,24 +7,30 @@
 mod error;
 mod kline;
 mod minute;
+mod mkline;
 mod parse;
 mod search;
 
 pub use error::{QuoteError, Result};
 pub use kline::{kline_data_key, parse_kline_json};
 pub use minute::parse_minute_json;
+pub use mkline::parse_mkline_json;
 pub use parse::{decode_gbk, parse_quote_body, parse_quote_line};
 pub use search::parse_search_body;
 
-use longbridgea_core::{Adjust, Bar, KlinePeriod, MinuteSeries, Quote, SearchHit, Symbol};
+use longbridgea_core::{
+    Adjust, Bar, KlinePeriod, MinuteInterval, MinuteSeries, Quote, SearchHit, Symbol,
+};
 use std::time::Duration;
 
 /// Client configuration.
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
     pub quote_base: String,
-    /// Base host for minute + fqkline JSON APIs.
+    /// Base host for minute query + fqkline JSON APIs (`web.ifzq` often works).
     pub ifzq_base: String,
+    /// Host for mkline — prefer `ifzq.gtimg.cn` (`web.ifzq` may 301).
+    pub mkline_base: String,
     /// Smartbox search host.
     pub smartbox_base: String,
     pub timeout_ms: u64,
@@ -37,6 +43,7 @@ impl Default for ClientConfig {
         Self {
             quote_base: "https://qt.gtimg.cn".to_string(),
             ifzq_base: "https://web.ifzq.gtimg.cn".to_string(),
+            mkline_base: "https://ifzq.gtimg.cn".to_string(),
             smartbox_base: "https://smartbox.gtimg.cn".to_string(),
             timeout_ms: 10_000,
             user_agent: "Mozilla/5.0 (compatible; LongbridgeA/0.1)".to_string(),
@@ -158,6 +165,31 @@ impl TencentQuoteClient {
         parse_kline_json(&text, symbol, period, adjust)
     }
 
+    /// Minute K-line bars (`m1` / `m5` / `m15` / `m30` / `m60`).
+    ///
+    /// Uses `mkline_base` (default `https://ifzq.gtimg.cn`). Unadjusted.
+    pub async fn fetch_mkline(
+        &self,
+        symbol: &Symbol,
+        interval: MinuteInterval,
+        count: u32,
+    ) -> Result<Vec<Bar>> {
+        let count = count.max(1);
+        let param = format!(
+            "{},{},,{}",
+            symbol.tencent_wire(),
+            interval.as_tencent(),
+            count
+        );
+        let url = format!(
+            "{}/appstock/app/kline/mkline?param={}",
+            self.config.mkline_base.trim_end_matches('/'),
+            param
+        );
+        let text = self.get_text(&url).await?;
+        parse_mkline_json(&text, symbol, interval)
+    }
+
     /// Symbol / name search via smartbox.
     ///
     /// Keyword may be code, Chinese name, or pinyin (e.g. `600519`, `茅台`, `gzmt`).
@@ -214,6 +246,8 @@ mod tests {
         let c = ClientConfig::default();
         assert!(c.quote_base.contains("gtimg"));
         assert!(c.ifzq_base.contains("ifzq"));
+        assert!(c.mkline_base.contains("ifzq"));
+        assert!(!c.mkline_base.contains("web."));
         assert!(c.smartbox_base.contains("smartbox"));
     }
 

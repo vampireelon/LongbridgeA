@@ -186,6 +186,7 @@ pub struct Quote {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Bar {
     pub ts: i64,
+    /// Calendar date `YYYY-MM-DD` for daily K, or `YYYYMMDDHHMM` for minute K.
     pub date: String,
     pub open: f64,
     pub high: f64,
@@ -223,6 +224,39 @@ impl KlinePeriod {
             KlinePeriod::Day => "day",
             KlinePeriod::Week => "week",
             KlinePeriod::Month => "month",
+        }
+    }
+}
+
+/// Intraday / minute bar interval for Tencent `mkline`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MinuteInterval {
+    M1,
+    M5,
+    M15,
+    M30,
+    M60,
+}
+
+impl MinuteInterval {
+    /// Tencent wire token, e.g. `m5`.
+    pub fn as_tencent(self) -> &'static str {
+        match self {
+            MinuteInterval::M1 => "m1",
+            MinuteInterval::M5 => "m5",
+            MinuteInterval::M15 => "m15",
+            MinuteInterval::M30 => "m30",
+            MinuteInterval::M60 => "m60",
+        }
+    }
+
+    pub fn minutes(self) -> u32 {
+        match self {
+            MinuteInterval::M1 => 1,
+            MinuteInterval::M5 => 5,
+            MinuteInterval::M15 => 15,
+            MinuteInterval::M30 => 30,
+            MinuteInterval::M60 => 60,
         }
     }
 }
@@ -285,5 +319,11 @@ mod tests {
         };
         assert!(h.is_a_share());
         assert_eq!(h.to_symbol().unwrap().tencent_wire(), "sh600519");
+    }
+
+    #[test]
+    fn minute_interval_wire() {
+        assert_eq!(MinuteInterval::M5.as_tencent(), "m5");
+        assert_eq!(MinuteInterval::M60.minutes(), 60);
     }
 }

@@ -2,7 +2,7 @@
 
 > **目标**：A 股选股与分析工具（Rust + gpui-kit + 腾讯行情）。无交易功能。
 >
-> **当前阶段**：Phase 1 — 快照 / 分时 / 日K / 搜索 已实现。
+> **当前阶段**：Phase 1 — 快照 / 分时 / 日K / 分钟K / 搜索 已实现。
 
 ---
 
@@ -13,9 +13,9 @@
 - [x] 实时快照 `qt.gtimg.cn`（批量 + GBK + 五档）
 - [x] 分时 `minute/query`
 - [x] K 线 `fqkline/get`（日/周/月 + 前/后/不复权）
-- [ ] 分钟 K（mkline）
+- [x] 分钟 K `mkline`（m1/m5/m15/m30/m60，host=`ifzq.gtimg.cn`）
 - [x] 股票搜索 smartbox（`fetch_search` + `SearchHit`）
-- [x] 模型：`Symbol` / `Quote` / `Bar` / `MinuteSeries` / `SearchHit`
+- [x] 模型：`Symbol` / `Quote` / `Bar` / `MinuteSeries` / `SearchHit` / `MinuteInterval`
 - [ ] 缓存与订阅
 
 ## Phase 2+：UI（gpui-kit）等
@@ -37,6 +37,7 @@ API：
 - `TencentQuoteClient::fetch_quotes`
 - `TencentQuoteClient::fetch_minute`
 - `TencentQuoteClient::fetch_kline(symbol, period, adjust, count)`
+- `TencentQuoteClient::fetch_mkline(symbol, interval, count)`
 - `TencentQuoteClient::fetch_search(keyword) -> Vec<SearchHit>`
 
 ---

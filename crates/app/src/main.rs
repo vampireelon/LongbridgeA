@@ -3,7 +3,7 @@
 //! GUI bootstrap (gpui-kit) lands in Phase 2.
 //! Optional live smoke: `LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app`
 
-use longbridgea_core::{Adjust, KlinePeriod, Symbol};
+use longbridgea_core::{Adjust, KlinePeriod, MinuteInterval, Symbol};
 use tencent_quote::{ClientConfig, TencentQuoteClient};
 
 #[tokio::main]
@@ -15,6 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let client = TencentQuoteClient::new(ClientConfig::default())?;
     println!("Quote base:    {}", client.config().quote_base);
     println!("Ifzq base:     {}", client.config().ifzq_base);
+    println!("Mkline base:   {}", client.config().mkline_base);
     println!("Smartbox base: {}", client.config().smartbox_base);
 
     if std::env::var("LONGBRIDGEA_LIVE").is_ok() {
@@ -73,6 +74,19 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             Err(e) => eprintln!("kline failed: {e}"),
+        }
+
+        match client.fetch_mkline(&sym, MinuteInterval::M5, 10).await {
+            Ok(bars) => {
+                println!("MKLINE m5 bars={}", bars.len());
+                for b in bars.iter().rev().take(3) {
+                    println!(
+                        "  {} O={} C={} H={} L={} V={}",
+                        b.date, b.open, b.close, b.high, b.low, b.volume
+                    );
+                }
+            }
+            Err(e) => eprintln!("mkline failed: {e}"),
         }
     } else {
         println!("Tip: LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app");
