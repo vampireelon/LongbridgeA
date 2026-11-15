@@ -13,10 +13,25 @@ async fn main() -> anyhow::Result<()> {
     println!("UI: {}", longbridgea_ui::pages::placeholder_watchlist());
 
     let client = TencentQuoteClient::new(ClientConfig::default())?;
-    println!("Quote base: {}", client.config().quote_base);
-    println!("Ifzq base:  {}", client.config().ifzq_base);
+    println!("Quote base:    {}", client.config().quote_base);
+    println!("Ifzq base:     {}", client.config().ifzq_base);
+    println!("Smartbox base: {}", client.config().smartbox_base);
 
     if std::env::var("LONGBRIDGEA_LIVE").is_ok() {
+        match client.fetch_search("茅台").await {
+            Ok(hits) => {
+                println!("SEARCH '茅台' hits={}", hits.len());
+                for h in hits.iter().take(8) {
+                    let a = if h.is_a_share() { "A" } else { "-" };
+                    println!(
+                        "  [{a}] {} {} {} ({}) {}",
+                        h.market_tag, h.code, h.name, h.pinyin, h.kind
+                    );
+                }
+            }
+            Err(e) => eprintln!("search failed: {e}"),
+        }
+
         let sym = Symbol::parse("sh600519")?;
 
         match client.fetch_quotes(&[sym.clone()]).await {

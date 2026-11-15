@@ -8,13 +8,15 @@ mod error;
 mod kline;
 mod minute;
 mod parse;
+mod search;
 
 pub use error::{QuoteError, Result};
 pub use kline::{kline_data_key, parse_kline_json};
 pub use minute::parse_minute_json;
 pub use parse::{decode_gbk, parse_quote_body, parse_quote_line};
+pub use search::parse_search_body;
 
-use longbridgea_core::{Adjust, Bar, KlinePeriod, MinuteSeries, Quote, Symbol};
+use longbridgea_core::{Adjust, Bar, KlinePeriod, MinuteSeries, Quote, SearchHit, Symbol};
 use std::time::Duration;
 
 /// Client configuration.
@@ -23,6 +25,8 @@ pub struct ClientConfig {
     pub quote_base: String,
     /// Base host for minute + fqkline JSON APIs.
     pub ifzq_base: String,
+    /// Smartbox search host.
+    pub smartbox_base: String,
     pub timeout_ms: u64,
     pub user_agent: String,
     pub referer: String,
@@ -33,6 +37,7 @@ impl Default for ClientConfig {
         Self {
             quote_base: "https://qt.gtimg.cn".to_string(),
             ifzq_base: "https://web.ifzq.gtimg.cn".to_string(),
+            smartbox_base: "https://smartbox.gtimg.cn".to_string(),
             timeout_ms: 10_000,
             user_agent: "Mozilla/5.0 (compatible; LongbridgeA/0.1)".to_string(),
             referer: "https://gu.qq.com/".to_string(),
@@ -152,6 +157,52 @@ impl TencentQuoteClient {
         let text = self.get_text(&url).await?;
         parse_kline_json(&text, symbol, period, adjust)
     }
+
+    /// Symbol / name search via smartbox.
+    ///
+    /// Keyword may be code, Chinese name, or pinyin (e.g. `600519`, `茅台`, `gzmt`).
+    /// Returns mixed markets (SH/SZ/BJ/HK/US/…); filter with [`SearchHit::is_a_share`].
+    pub async fn fetch_search(&self, keyword: &str) -> Result<Vec<SearchHit>> {
+        let keyword = keyword.trim();
+        if keyword.is_empty() {
+            return Ok(Vec::new());
+        }
+        let url = format!(
+            "{}/s3/?v=2&t=all&c=1&q={}",
+            self.config.smartbox_base.trim_end_matches('/'),
+            urlencoding_approx(keyword)
+        );
+        let bytes = self
+            .http
+            .get(&url)
+            .header("Referer", &self.config.referer)
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await?;
+        // smartbox is typically GBK
+        let text = decode_gbk(&bytes);
+        parse_search_body(&text)
+    }
+}
+
+/// Minimal query-string encoding (percent-encode non-unreserved).
+fn urlencoding_approx(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() * 3);
+    for b in s.as_bytes() {
+        match *b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(*b as char);
+            }
+            _ => {
+                out.push('%');
+                out.push(char::from(b"0123456789ABCDEF"[(*b >> 4) as usize]));
+                out.push(char::from(b"0123456789ABCDEF"[(*b & 0xf) as usize]));
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -163,6 +214,7 @@ mod tests {
         let c = ClientConfig::default();
         assert!(c.quote_base.contains("gtimg"));
         assert!(c.ifzq_base.contains("ifzq"));
+        assert!(c.smartbox_base.contains("smartbox"));
     }
 
     #[test]
