@@ -57,7 +57,6 @@ impl Symbol {
 
         let lower = s.to_ascii_lowercase();
 
-        // 600519.SH / 000001.SZ
         if let Some((code, mkt)) = lower.split_once('.') {
             let market = match mkt {
                 "sh" | "xshg" => Market::Sh,
@@ -71,7 +70,6 @@ impl Symbol {
             return Ok(Self::new(market, code));
         }
 
-        // sh600519 / sz000001 / bj830799
         if lower.len() > 2 {
             let prefix = &lower[..2];
             let rest = &lower[2..];
@@ -88,7 +86,6 @@ impl Symbol {
             }
         }
 
-        // Bare digits: infer market from first digit rules (common A-share heuristic).
         if lower.chars().all(|c| c.is_ascii_digit()) {
             let market = match lower.as_bytes().first() {
                 Some(b'5') | Some(b'6') | Some(b'9') => Market::Sh,
@@ -147,15 +144,75 @@ pub struct Quote {
     pub asks: Vec<DepthLevel>,
 }
 
-/// One OHLCV bar.
+/// One OHLCV bar (date/time encoded in `ts` as unix seconds when known, else 0).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Bar {
     pub ts: i64,
+    /// Calendar date `YYYY-MM-DD` when from daily K; empty for pure minute aggregates.
+    pub date: String,
     pub open: f64,
     pub high: f64,
     pub low: f64,
     pub close: f64,
     pub volume: f64,
+}
+
+/// One intraday minute point from Tencent minute API.
+/// Volume/amount are **cumulative** from open unless noted otherwise.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MinutePoint {
+    /// `HHMM` e.g. `0930`, `1300`.
+    pub time: String,
+    pub price: f64,
+    pub volume_cum: f64,
+    pub amount_cum: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MinuteSeries {
+    pub symbol: Symbol,
+    /// Trade date `YYYYMMDD` when provided by API.
+    pub date: Option<String>,
+    pub points: Vec<MinutePoint>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum KlinePeriod {
+    Day,
+    Week,
+    Month,
+}
+
+impl KlinePeriod {
+    pub fn as_tencent(self) -> &'static str {
+        match self {
+            KlinePeriod::Day => "day",
+            KlinePeriod::Week => "week",
+            KlinePeriod::Month => "month",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Adjust {
+    /// 前复权
+    Qfq,
+    /// 后复权
+    Hfq,
+    /// 不复权
+    None,
+}
+
+impl Adjust {
+    pub fn as_tencent_suffix(self) -> &'static str {
+        match self {
+            Adjust::Qfq => "qfq",
+            Adjust::Hfq => "hfq",
+            Adjust::None => "",
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
