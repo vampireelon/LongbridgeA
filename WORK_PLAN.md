@@ -42,7 +42,7 @@
 **参考资源**：
 - [gpui-kit GitHub](https://github.com/longbridge/gpui-kit)
 - [gpui-kit 文档](https://gpui-kit.com)
-- 腾讯行情接口：`http://qt.gtimg.cn/q=sh600519` 等公开接口
+- 腾讯行情接口调研：[docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
 
 ---
 
@@ -52,7 +52,7 @@
 - [x] 创建 GitHub 仓库 `LongbridgeA`
 - [x] 完善 README、LICENSE、.gitignore
 - [ ] 定义项目结构（Cargo Workspace）
-- [ ] 调研并文档化腾讯行情接口字段与限流策略
+- [x] 调研并文档化腾讯行情接口字段与限流策略 → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
 - [ ] 确定主题系统与设计 tokens（对标 Longbridge Pro 深色主题）
 
 ### Phase 1：数据层（核心）
@@ -121,6 +121,7 @@ LongbridgeA/
 │   └── chart/                 # 图表引擎
 ├── assets/                    # 图标、字体、主题资源
 └── docs/                      # 接口文档、设计文档
+    └── tencent-quote-api.md   # 已完成
 ```
 
 ---
@@ -128,20 +129,10 @@ LongbridgeA/
 ## 5. 近期下一步行动（本周）
 
 1. **完善仓库基础文件** ✅
-   - 写详细 README（中英文）
-   - 添加 MIT LICENSE
-   - 配置 .gitignore（Rust 标准）
-
-2. **接口调研文档**
-   - 在 `docs/tencent-quote-api.md` 中整理：
-     - 实时报价字段解析
-     - K线与分时接口
-     - 批量请求限制与最佳实践
-
+2. **接口调研文档** ✅ → [docs/tencent-quote-api.md](./docs/tencent-quote-api.md)
 3. **设计文档**
    - 核心页面线框图描述（自选、个股分析、选股器）
    - 主题色板与组件规范
-
 4. **技术验证（仍不写业务代码）**
    - 确认 gpui-kit 最新版本与 WASM 支持情况
    - 本地跑通 gpui-kit 官方示例
@@ -150,7 +141,7 @@ LongbridgeA/
 
 ## 6. 风险与注意事项
 
-- **数据合规**：腾讯公开接口为非官方，存在变更或限流风险，需做好抽象层，方便切换数据源。
+- **数据合规**：腾讯公开接口为非官方，存在变更或限流风险，需做好抽象层，方便切换数据源。详见接口调研文档。
 - **性能**：A股全市场实时订阅与选股扫描对网络与渲染压力较大，需合理设计订阅、缓存与刷新策略。
 - **gpui-kit 成熟度**：虽已被 Longbridge Pro 使用，但仍在快速迭代，需锁定版本并关注 breaking changes。
 - **范围控制**：严格排除交易相关功能，保持产品定位清晰（纯选股/分析工具）。
@@ -166,5 +157,5 @@ LongbridgeA/
 
 ---
 
-**最后更新**：2026-11-15（已补全 LICENSE + .gitignore）  
+**最后更新**：2026-11-15（腾讯行情接口调研文档已完成）  
 **仓库地址**：https://github.com/vampireelon/LongbridgeA
