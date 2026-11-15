@@ -4,19 +4,23 @@
 
 #![forbid(unsafe_code)]
 
+mod cache;
 mod error;
 mod kline;
 mod minute;
 mod mkline;
 mod parse;
 mod search;
+mod subscribe;
 
+pub use cache::{KlineCache, KlineCacheKey, QuoteCache};
 pub use error::{QuoteError, Result};
 pub use kline::{kline_data_key, parse_kline_json};
 pub use minute::parse_minute_json;
 pub use mkline::parse_mkline_json;
 pub use parse::{decode_gbk, parse_quote_body, parse_quote_line};
 pub use search::parse_search_body;
+pub use subscribe::{PollConfig, QuoteHub, QuoteTick};
 
 use longbridgea_core::{
     Adjust, Bar, KlinePeriod, MinuteInterval, MinuteSeries, Quote, SearchHit, Symbol,
@@ -82,7 +86,6 @@ impl TencentQuoteClient {
             .error_for_status()?
             .bytes()
             .await?;
-        // Snapshot is GBK; ifzq JSON is typically UTF-8. Try UTF-8 first, fall back GBK.
         match std::str::from_utf8(&bytes) {
             Ok(s) => Ok(s.to_string()),
             Err(_) => Ok(decode_gbk(&bytes)),
@@ -166,8 +169,6 @@ impl TencentQuoteClient {
     }
 
     /// Minute K-line bars (`m1` / `m5` / `m15` / `m30` / `m60`).
-    ///
-    /// Uses `mkline_base` (default `https://ifzq.gtimg.cn`). Unadjusted.
     pub async fn fetch_mkline(
         &self,
         symbol: &Symbol,
@@ -191,9 +192,6 @@ impl TencentQuoteClient {
     }
 
     /// Symbol / name search via smartbox.
-    ///
-    /// Keyword may be code, Chinese name, or pinyin (e.g. `600519`, `茅台`, `gzmt`).
-    /// Returns mixed markets (SH/SZ/BJ/HK/US/…); filter with [`SearchHit::is_a_share`].
     pub async fn fetch_search(&self, keyword: &str) -> Result<Vec<SearchHit>> {
         let keyword = keyword.trim();
         if keyword.is_empty() {
@@ -213,13 +211,11 @@ impl TencentQuoteClient {
             .error_for_status()?
             .bytes()
             .await?;
-        // smartbox is typically GBK
         let text = decode_gbk(&bytes);
         parse_search_body(&text)
     }
 }
 
-/// Minimal query-string encoding (percent-encode non-unreserved).
 fn urlencoding_approx(s: &str) -> String {
     let mut out = String::with_capacity(s.len() * 3);
     for b in s.as_bytes() {

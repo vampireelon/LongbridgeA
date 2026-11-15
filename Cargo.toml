@@ -23,12 +23,12 @@ tencent-quote = { path = "crates/tencent-quote" }
 longbridgea-chart = { path = "crates/chart" }
 longbridgea-ui = { path = "crates/ui" }
 
-# Shared third-party (versions pinned for skeleton; adjust as needed)
+# Shared third-party
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 anyhow = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 encoding_rs = "0.8"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }

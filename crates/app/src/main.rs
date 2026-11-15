@@ -4,7 +4,10 @@
 //! Optional live smoke: `LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app`
 
 use longbridgea_core::{Adjust, KlinePeriod, MinuteInterval, Symbol};
-use tencent_quote::{ClientConfig, TencentQuoteClient};
+use std::sync::Arc;
+use std::time::Duration;
+use tencent_quote::{ClientConfig, PollConfig, QuoteHub, TencentQuoteClient};
+use tokio::time::timeout;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -19,14 +22,67 @@ async fn main() -> anyhow::Result<()> {
     println!("Smartbox base: {}", client.config().smartbox_base);
 
     if std::env::var("LONGBRIDGEA_LIVE").is_ok() {
+        // --- Hub: cache + one poll cycle ---
+        let hub = QuoteHub::new(
+            client.clone(),
+            Arc::new(tencent_quote::QuoteCache::new(Duration::from_secs(5))),
+            PollConfig {
+                interval: Duration::from_secs(3),
+                broadcast_capacity: 16,
+            },
+        );
+        let watch = [
+            Symbol::parse("sh600519")?,
+            Symbol::parse("sz000001")?,
+        ];
+        hub.watch(&watch).await;
+        let tick = hub.poll_once().await;
+        println!(
+            "HUB poll_once requested={} quotes={} errors={:?}",
+            tick.requested.len(),
+            tick.quotes.len(),
+            tick.errors
+        );
+        for q in &tick.quotes {
+            println!(
+                "  {} {} {} ({:+.2}%)",
+                q.symbol.tencent_wire(),
+                q.name,
+                q.price,
+                q.change_pct
+            );
+        }
+        // Cache hit path
+        if let Ok(q) = hub.get_quote(&watch[0]).await {
+            println!(
+                "CACHE hit/fetch {} price={}",
+                q.symbol.tencent_wire(),
+                q.price
+            );
+        }
+
+        // Background poll: wait for one tick then stop
+        let mut rx = hub.subscribe_ticks();
+        hub.start().await;
+        match timeout(Duration::from_secs(8), rx.recv()).await {
+            Ok(Ok(t)) => println!(
+                "HUB bg tick quotes={} requested={:?}",
+                t.quotes.len(),
+                t.requested
+            ),
+            Ok(Err(e)) => eprintln!("bg recv closed: {e}"),
+            Err(_) => eprintln!("bg tick timeout (market closed / network?)"),
+        }
+        hub.stop().await;
+
         match client.fetch_search("茅台").await {
             Ok(hits) => {
                 println!("SEARCH '茅台' hits={}", hits.len());
-                for h in hits.iter().take(8) {
+                for h in hits.iter().take(5) {
                     let a = if h.is_a_share() { "A" } else { "-" };
                     println!(
-                        "  [{a}] {} {} {} ({}) {}",
-                        h.market_tag, h.code, h.name, h.pinyin, h.kind
+                        "  [{a}] {} {} {} ({})",
+                        h.market_tag, h.code, h.name, h.pinyin
                     );
                 }
             }
@@ -34,58 +90,25 @@ async fn main() -> anyhow::Result<()> {
         }
 
         let sym = Symbol::parse("sh600519")?;
-
-        match client.fetch_quotes(&[sym.clone()]).await {
-            Ok(quotes) => {
-                for q in quotes {
-                    println!(
-                        "QUOTE {} {} price={} pct={}%",
-                        q.symbol.tencent_wire(),
-                        q.name,
-                        q.price,
-                        q.change_pct
-                    );
-                }
-            }
-            Err(e) => eprintln!("quote failed: {e}"),
-        }
-
         match client.fetch_minute(&sym).await {
             Ok(m) => println!(
-                "MINUTE points={} date={:?} last={:?}",
+                "MINUTE points={} last={:?}",
                 m.points.len(),
-                m.date,
                 m.points.last().map(|p| (&p.time, p.price))
             ),
             Err(e) => eprintln!("minute failed: {e}"),
         }
 
         match client
-            .fetch_kline(&sym, KlinePeriod::Day, Adjust::Qfq, 5)
+            .fetch_kline(&sym, KlinePeriod::Day, Adjust::Qfq, 3)
             .await
         {
-            Ok(bars) => {
-                println!("KLINE day bars={}", bars.len());
-                for b in bars.iter().rev().take(3) {
-                    println!(
-                        "  {} O={} C={} H={} L={} V={}",
-                        b.date, b.open, b.close, b.high, b.low, b.volume
-                    );
-                }
-            }
+            Ok(bars) => println!("KLINE day bars={}", bars.len()),
             Err(e) => eprintln!("kline failed: {e}"),
         }
 
-        match client.fetch_mkline(&sym, MinuteInterval::M5, 10).await {
-            Ok(bars) => {
-                println!("MKLINE m5 bars={}", bars.len());
-                for b in bars.iter().rev().take(3) {
-                    println!(
-                        "  {} O={} C={} H={} L={} V={}",
-                        b.date, b.open, b.close, b.high, b.low, b.volume
-                    );
-                }
-            }
+        match client.fetch_mkline(&sym, MinuteInterval::M5, 5).await {
+            Ok(bars) => println!("MKLINE m5 bars={}", bars.len()),
             Err(e) => eprintln!("mkline failed: {e}"),
         }
     } else {
