@@ -113,9 +113,10 @@ impl WatchlistPage {
         let desc = self.sort_desc;
         self.rows.sort_by(|a, b| {
             let ord = match col {
-                Some(WatchColumn::ChangePct) => {
-                    a.change_pct.partial_cmp(&b.change_pct).unwrap_or(std::cmp::Ordering::Equal)
-                }
+                Some(WatchColumn::ChangePct) => a
+                    .change_pct
+                    .partial_cmp(&b.change_pct)
+                    .unwrap_or(std::cmp::Ordering::Equal),
                 Some(WatchColumn::Price) => {
                     a.price.partial_cmp(&b.price).unwrap_or(std::cmp::Ordering::Equal)
                 }
