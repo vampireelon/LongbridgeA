@@ -4,8 +4,17 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "UI pages and widgets for LongbridgeA (gpui-kit to be added in Phase 2)"
+description = "UI shell, theme tokens, pages and widgets for LongbridgeA"
+
+[features]
+default = []
+# Optional desktop GUI. Requires platform native deps; see docs/UI_SKELETON.md.
+gpui = ["dep:gpui-kit"]
 
 [dependencies]
 longbridgea-core = { workspace = true }
 longbridgea-chart = { workspace = true }
+serde = { workspace = true }
+
+# Optional — enable with `--features gpui` on longbridgea-ui / longbridgea-app
+gpui-kit = { version = "0.9", optional = true }

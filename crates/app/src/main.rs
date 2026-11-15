@@ -1,9 +1,12 @@
 //! LongbridgeA application entry.
 //!
-//! GUI bootstrap (gpui-kit) lands in Phase 2.
+//! Phase 2: UI shell state is available; gpui window is feature-gated later.
 //! Optional live smoke: `LONGBRIDGEA_LIVE=1 cargo run -p longbridgea-app`
 
 use longbridgea_core::{Adjust, KlinePeriod, MinuteInterval, Symbol};
+use longbridgea_ui::pages::{ScreenerPage, WatchlistPage};
+use longbridgea_ui::widgets::PriceChangeView;
+use longbridgea_ui::{AppShell, Route};
 use std::sync::Arc;
 use std::time::Duration;
 use tencent_quote::{ClientConfig, PollConfig, QuoteHub, TencentQuoteClient};
@@ -13,16 +16,21 @@ use tokio::time::timeout;
 async fn main() -> anyhow::Result<()> {
     println!("LongbridgeA {}", env!("CARGO_PKG_VERSION"));
     println!("Scope: A-share selection & analysis (no trading).");
-    println!("UI: {}", longbridgea_ui::pages::placeholder_watchlist());
+    println!("{}", longbridgea_ui::skeleton_banner());
+
+    let mut shell = AppShell::default();
+    println!("  {}", shell.debug_layout());
+    shell.navigate(Route::Screener);
+    println!("  after → screener: {}", shell.debug_layout());
+    shell.navigate(Route::Watchlist);
+
+    let pc = PriceChangeView::with_default_dark_cn(1.25);
+    println!("  sample PriceChange: {} ({})", pc.text, pc.color_hex);
 
     let client = TencentQuoteClient::new(ClientConfig::default())?;
-    println!("Quote base:    {}", client.config().quote_base);
-    println!("Ifzq base:     {}", client.config().ifzq_base);
-    println!("Mkline base:   {}", client.config().mkline_base);
-    println!("Smartbox base: {}", client.config().smartbox_base);
+    println!("Quote base: {}", client.config().quote_base);
 
     if std::env::var("LONGBRIDGEA_LIVE").is_ok() {
-        // --- Hub: cache + one poll cycle ---
         let hub = QuoteHub::new(
             client.clone(),
             Arc::new(tencent_quote::QuoteCache::new(Duration::from_secs(5))),
@@ -36,69 +44,55 @@ async fn main() -> anyhow::Result<()> {
             Symbol::parse("sz000001")?,
         ];
         hub.watch(&watch).await;
+
+        let mut watchlist = WatchlistPage::default();
+        for s in &watch {
+            watchlist.add_symbol(s);
+        }
+
         let tick = hub.poll_once().await;
+        watchlist.apply_quotes(tick.quotes.clone());
         println!(
-            "HUB poll_once requested={} quotes={} errors={:?}",
-            tick.requested.len(),
-            tick.quotes.len(),
-            tick.errors
+            "WATCHLIST rows={} (group symbols={:?})",
+            watchlist.rows.len(),
+            watchlist.groups[0].symbols
         );
-        for q in &tick.quotes {
+        for q in watchlist.rows.iter().take(5) {
+            let ch = PriceChangeView::with_default_dark_cn(q.change_pct);
             println!(
-                "  {} {} {} ({:+.2}%)",
+                "  {} {} {} {}",
                 q.symbol.tencent_wire(),
                 q.name,
                 q.price,
-                q.change_pct
-            );
-        }
-        // Cache hit path
-        if let Ok(q) = hub.get_quote(&watch[0]).await {
-            println!(
-                "CACHE hit/fetch {} price={}",
-                q.symbol.tencent_wire(),
-                q.price
+                ch.text
             );
         }
 
-        // Background poll: wait for one tick then stop
+        // Open detail tab in shell
+        if let Some(q) = watchlist.rows.first() {
+            shell.open_stock(&q.symbol, &q.name);
+            println!("  {}", shell.debug_layout());
+        }
+
+        let mut screener = ScreenerPage::default();
+        screener.criteria.change_pct.min = Some(0.0);
+        screener.apply_local_filter(&tick.quotes);
+        println!(
+            "SCREENER status={:?} hits={}",
+            screener.status,
+            screener.results.len()
+        );
+
         let mut rx = hub.subscribe_ticks();
         hub.start().await;
         match timeout(Duration::from_secs(8), rx.recv()).await {
-            Ok(Ok(t)) => println!(
-                "HUB bg tick quotes={} requested={:?}",
-                t.quotes.len(),
-                t.requested
-            ),
+            Ok(Ok(t)) => println!("HUB bg tick quotes={}", t.quotes.len()),
             Ok(Err(e)) => eprintln!("bg recv closed: {e}"),
-            Err(_) => eprintln!("bg tick timeout (market closed / network?)"),
+            Err(_) => eprintln!("bg tick timeout"),
         }
         hub.stop().await;
 
-        match client.fetch_search("茅台").await {
-            Ok(hits) => {
-                println!("SEARCH '茅台' hits={}", hits.len());
-                for h in hits.iter().take(5) {
-                    let a = if h.is_a_share() { "A" } else { "-" };
-                    println!(
-                        "  [{a}] {} {} {} ({})",
-                        h.market_tag, h.code, h.name, h.pinyin
-                    );
-                }
-            }
-            Err(e) => eprintln!("search failed: {e}"),
-        }
-
         let sym = Symbol::parse("sh600519")?;
-        match client.fetch_minute(&sym).await {
-            Ok(m) => println!(
-                "MINUTE points={} last={:?}",
-                m.points.len(),
-                m.points.last().map(|p| (&p.time, p.price))
-            ),
-            Err(e) => eprintln!("minute failed: {e}"),
-        }
-
         match client
             .fetch_kline(&sym, KlinePeriod::Day, Adjust::Qfq, 3)
             .await
@@ -106,7 +100,6 @@ async fn main() -> anyhow::Result<()> {
             Ok(bars) => println!("KLINE day bars={}", bars.len()),
             Err(e) => eprintln!("kline failed: {e}"),
         }
-
         match client.fetch_mkline(&sym, MinuteInterval::M5, 5).await {
             Ok(bars) => println!("MKLINE m5 bars={}", bars.len()),
             Err(e) => eprintln!("mkline failed: {e}"),

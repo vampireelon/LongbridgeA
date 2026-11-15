@@ -1,30 +1,26 @@
-//! Application UI layer.
+//! LongbridgeA UI layer.
 //!
-//! Phase 2 will depend on `gpui-kit` and implement shell + pages described in `docs/DESIGN.md`.
-//! This skeleton only reserves module layout.
+//! Phase 2 skeleton: design tokens, navigation shell state, page models and
+//! pure widgets. Optional `gpui` feature will host gpui-kit views later.
+//!
+//! See `docs/DESIGN.md` and `docs/UI_SKELETON.md`.
 
 #![forbid(unsafe_code)]
 
-pub mod pages {
-    //! Top-level routes: watchlist, stock detail, screener, market, settings.
+pub mod nav;
+pub mod pages;
+pub mod shell;
+pub mod theme;
+pub mod widgets;
 
-    pub fn placeholder_watchlist() -> &'static str {
-        "Watchlist (UI not wired yet)"
-    }
+pub use nav::{NavItem, Route};
+pub use shell::{AppShell, ShellLayout, Tab, TabKind};
+pub use theme::{ChangeColorScheme, ColorTheme, Spacing, ThemeMode};
 
-    pub fn placeholder_screener() -> &'static str {
-        "Screener (UI not wired yet)"
-    }
-}
-
-pub mod theme {
-    //! Design tokens bridge; see `docs/DESIGN.md`.
-
-    /// A-share convention: red up / green down.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-    pub enum ChangeColorScheme {
-        #[default]
-        CnRedUpGreenDown,
-        GlobalGreenUpRedDown,
-    }
+/// Human-readable skeleton banner for CLI smoke tests.
+pub fn skeleton_banner() -> String {
+    format!(
+        "LongbridgeA UI skeleton | routes={} | theme=dark cn-red-up",
+        Route::ALL.len()
+    )
 }
