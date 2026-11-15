@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn parse_moutai_single() {
-        let body = r#"v_hint=\"sh~600519~贵州茅台~gzmt~GP-A\";"#;
+        let body = r#"v_hint="sh~600519~贵州茅台~gzmt~GP-A";"#;
         let hits = parse_search_body(body).unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].market_tag, "sh");
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn parse_multi_with_hk_us() {
-        let body = r#"v_hint=\"sh~601318~中国平安~zgpa~GP-A^hk~02318~中国平安~zgpa~GP^us~pngay.ps~PingAn~pingan~GP^sz~000001~平安银行~payh~GP-A\";"#;
+        let body = r#"v_hint="sh~601318~中国平安~zgpa~GP-A^hk~02318~中国平安~zgpa~GP^us~pngay.ps~PingAn~pingan~GP^sz~000001~平安银行~payh~GP-A";"#;
         let hits = parse_search_body(body).unwrap();
         assert_eq!(hits.len(), 4);
         assert_eq!(hits[0].code, "601318");
@@ -120,8 +120,8 @@ mod tests {
 
     #[test]
     fn ignore_cate_hint() {
-        let body = r#"v_cate_hint=\"bd010300~煤炭~MT\";
-v_hint=\"sh~600519~贵州茅台~gzmt~GP-A^sh~000820~煤炭指数~mtzs~ZS\";"#;
+        let body = r#"v_cate_hint="bd010300~煤炭~MT";
+v_hint="sh~600519~贵州茅台~gzmt~GP-A^sh~000820~煤炭指数~mtzs~ZS";"#;
         let hits = parse_search_body(body).unwrap();
         assert_eq!(hits.len(), 2);
         assert_eq!(hits[0].name, "贵州茅台");
@@ -130,7 +130,7 @@ v_hint=\"sh~600519~贵州茅台~gzmt~GP-A^sh~000820~煤炭指数~mtzs~ZS\";"#;
 
     #[test]
     fn empty_hint_ok() {
-        let body = r#"v_hint=\"\";"#;
+        let body = r#"v_hint="";"#;
         let hits = parse_search_body(body).unwrap();
         assert!(hits.is_empty());
     }
