@@ -50,7 +50,7 @@
 
 ### Phase 0：基础设施（当前）
 - [x] 创建 GitHub 仓库 `LongbridgeA`
-- [ ] 完善 README、LICENSE、.gitignore
+- [x] 完善 README、LICENSE、.gitignore
 - [ ] 定义项目结构（Cargo Workspace）
 - [ ] 调研并文档化腾讯行情接口字段与限流策略
 - [ ] 确定主题系统与设计 tokens（对标 Longbridge Pro 深色主题）
@@ -127,9 +127,9 @@ LongbridgeA/
 
 ## 5. 近期下一步行动（本周）
 
-1. **完善仓库基础文件**
+1. **完善仓库基础文件** ✅
    - 写详细 README（中英文）
-   - 添加 MIT / Apache-2.0 LICENSE
+   - 添加 MIT LICENSE
    - 配置 .gitignore（Rust 标准）
 
 2. **接口调研文档**
@@ -166,5 +166,5 @@ LongbridgeA/
 
 ---
 
-**最后更新**：2026-11-15（范围调整：搁置交易/下单，专注选股与分析）  
+**最后更新**：2026-11-15（已补全 LICENSE + .gitignore）  
 **仓库地址**：https://github.com/vampireelon/LongbridgeA
