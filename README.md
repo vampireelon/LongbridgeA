@@ -1,9 +1,11 @@
 # LongbridgeA
 
-**A-share edition of Longbridge Pro** — high-performance desktop trading terminal focused on Chinese A-shares.
+**A-share stock selection & analysis tool** inspired by Longbridge Pro’s market data and research experience.
 
 Built with **Rust + gpui-kit + WASM/Desktop**, using **Tencent market data APIs** as the primary quote source.
 
+> **Scope**: Pure stock selection and analysis. **No trading / order placement / simulated trading** features.
+>
 > Status: Planning & documentation phase. No application code yet.
 
 ## Repository
@@ -17,6 +19,15 @@ Built with **Rust + gpui-kit + WASM/Desktop**, using **Tencent market data APIs*
 - **UI**: [gpui-kit](https://github.com/longbridge/gpui-kit) (GPUI-based, production-ready components used by Longbridge Pro itself)
 - **Targets**: Native Desktop (macOS / Windows / Linux) + WASM
 - **Market Data**: Tencent public quote APIs (`qt.gtimg.cn` etc.)
+
+## Focus Areas
+
+- Real-time quotes, time-sharing & K-line charts
+- Watchlist & multi-screen workspace
+- Condition-based stock screener
+- Technical indicators & drawing tools
+- Sector / concept analysis
+- AI-assisted analysis entry points (future)
 
 ## Current Focus
 
