@@ -12,6 +12,8 @@ pub enum QuoteError {
     Core(#[from] CoreError),
     #[error(transparent)]
     Http(#[from] reqwest::Error),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
     #[error("{0}")]
     Msg(String),
 }
